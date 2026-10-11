@@ -1,0 +1,35 @@
+name: zerobehind
+description: Keep a fork in sync with upstream. An AI agent fixes conflicts and failing tests within strict limits.
+branding: { icon: git-merge, color: green }
+inputs:
+  upstream:
+    description: "`owner/repo` or any git URL"
+    required: true
+  upstream-branch:
+    description: Upstream branch (default: upstream's default branch)
+  branch:
+    description: Fork branch to sync (default: the fork's default branch)
+  token:
+    description: Fine-grained PAT (Contents + Workflows write) or GitHub App token
+    required: true
+  ai-gateway-api-key:
+    description: Vercel AI Gateway key. Without it, any conflict or failing test stops the run.
+  model:
+    description: Gateway model ID in provider/model form
+    default: anthropic/claude-sonnet-5.5
+  post-merge:
+    description: Command to run after merging, e.g. `npm install`
+  test:
+    description: Command that decides whether the result is good, e.g. `npm test`
+  max-conflicted-files:
+    description: Above this many conflicted files, stop without calling the model
+    default: "10"
+  max-steps:
+    description: Agent step limit per run
+    default: "30"
+  max-tokens:
+    description: Agent token limit per run (input + output, all steps)
+    default: "1000000"
+runs:
+  using: node24
+  main: dist/index.mjs
