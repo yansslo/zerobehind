@@ -1,0 +1,91 @@
+DESIGN.md
+  s_9687fecfffb599::t_bcfdbe475d1fe4 20-21,35,64
+  s_9687fecfffb599::t_210aff447a8b53 41,59,65,68-76,80-83,97,99,103,108-112
+  s_fcbca2341adb64::t_5966d445721353 22-23,118,121
+  s_9687fecfffb599::t_600d1ce2de37af 114
+  s_9687fecfffb599::t_fa04f3713339c5 30,45-46,51,100-101,116-117,119-120,122-126,137,143
+  s_9687fecfffb599::t_b7cd1945f0f616 5,138
+  s_597570aa8bf2d8::t_f7545b20dfd9ad 1-4,6-19,24-29,31-34,36-40,42-44,47-50,52-58,60-63,66-67,77-79,84-92,94,96,98,102,104-107,113,115,127-136,140-142,144-150
+  s_9687fecfffb599::t_6cdae19163610b 93,95
+  s_9687fecfffb599::t_0be9bb5b8f5b55 139
+.gitignore
+  s_fcbca2341adb64::t_c19f7e994ba1ac 1
+  s_fcbca2341adb64::t_5966d445721353 2
+package.json
+  s_fcbca2341adb64::t_513adabc8aa559 19
+  s_fcbca2341adb64::t_8bc5c5e2a84fd9 7
+  s_fcbca2341adb64::t_8572b09d52724d 1-6,8-18,21-23
+  s_fcbca2341adb64::t_9f47ed305d57d2 20
+action.yml
+  s_fcbca2341adb64::t_1e3dac51c2c182 1-34
+  s_fcbca2341adb64::t_ccb7490fd524e6 35
+test/fixtures.test.ts
+  s_fcbca2341adb64::t_60c388a7b9c39b 101-132,162-170,224
+  s_fcbca2341adb64::t_6b50224e386245 133
+  s_fcbca2341adb64::t_6fb05e51f8c1e9 1-100,134-161,171-223,225-230
+dist/licenses.txt
+  s_fcbca2341adb64::t_e7d2f97c767977 894-895,897-1096
+  s_fcbca2341adb64::t_f37a71f668f603 1-893,896,1097-1697
+src/core/exec.ts
+  s_fcbca2341adb64::t_d8b744553e84cb 1-75
+tsdown.config.ts
+  s_fcbca2341adb64::t_0120b874492e82 11
+  s_fcbca2341adb64::t_fe440c599264f3 1-10,12-39
+src/core/sync.ts
+  s_fcbca2341adb64::t_28f0ff047c5de3 172-173,199
+  s_fcbca2341adb64::t_afd1c8f106bda4 1-63,66-80,82-165,169-171,174-198,200-221,223-260,272-297
+  s_fcbca2341adb64::t_fbee8565bfa9c9 64-65,81
+  s_fcbca2341adb64::t_2927e61c32e813 166-168,261-271
+  s_fcbca2341adb64::t_e79cf8ae466828 222
+README.md
+  s_fcbca2341adb64::t_bc34e3de9d05f4 1-70
+src/core/agent.ts
+  s_fcbca2341adb64::t_f05ff287ae18a0 1-4,6-40,43-160,162-176,181
+  s_fcbca2341adb64::t_28f0ff047c5de3 5
+  s_fcbca2341adb64::t_f079bbe65c8f00 42
+  s_fcbca2341adb64::t_2927e61c32e813 41
+  s_fcbca2341adb64::t_5aa3054dd81825 161,177-180
+tsconfig.json
+  s_fcbca2341adb64::t_c19f7e994ba1ac 1-8,10-12
+  s_fcbca2341adb64::t_9f47ed305d57d2 9
+src/action.ts
+  s_fcbca2341adb64::t_2505d466fe1ab1 1-73
+dist/index.mjs
+  s_fcbca2341adb64::t_f37a71f668f603 1-82061,82063-82202,82204-82225,82227-82254,82257-82288,82290-82420,82423-82517,82519-82573,82593-82689
+  s_fcbca2341adb64::t_b641213e0d3a40 82062,82203,82226,82421-82422,82574-82592
+  s_fcbca2341adb64::t_e79cf8ae466828 82255-82256,82289,82518
+pnpm-lock.yaml
+  s_fcbca2341adb64::t_63ddb0aa6f2864 1-1847
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f8ea9c10daed59700a5cda2aff23742a520f735",
+  "prompts": {},
+  "sessions": {
+    "s_597570aa8bf2d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfc0d60f-c214-44df-a4b9-144e2e4f28f8",
+        "model": "unknown"
+      },
+      "human_author": "Yan Slobodianik <12988040+yansslo@users.noreply.github.com>"
+    },
+    "s_9687fecfffb599": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72bd1f61-4e77-4503-a9d1-bbdf25dd8f48",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yan Slobodianik <12988040+yansslo@users.noreply.github.com>"
+    },
+    "s_fcbca2341adb64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ad50c5d-5f1d-4fa1-aae0-07f7ba1268de",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yan Slobodianik <12988040+yansslo@users.noreply.github.com>"
+    }
+  }
+}
