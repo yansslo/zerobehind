@@ -1,0 +1,14 @@
+README.md
+  h_eac2e9ba060d49 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "325ad1aab4e6983c70c51fdb84d6c037c582fa99",
+  "prompts": {},
+  "humans": {
+    "h_eac2e9ba060d49": {
+      "author": "Yan Slobodianik <12988040+yansslo@users.noreply.github.com>"
+    }
+  }
+}
