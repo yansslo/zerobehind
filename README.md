@@ -17,7 +17,7 @@ jobs:
         with: { persist-credentials: false }   # required: zerobehind never stores credentials
       - uses: actions/setup-node@v4
         with: { node-version-file: .nvmrc }
-      - uses: zerobehind/zerobehind@v1
+      - uses: yansslo/zerobehind@v1
         with:
           upstream: owner/repo
           token: ${{ secrets.ZEROBEHIND_TOKEN }}
