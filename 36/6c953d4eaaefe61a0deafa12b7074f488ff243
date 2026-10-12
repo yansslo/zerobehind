@@ -1,0 +1,25 @@
+package.json
+  s_f3796765e1b9bb::t_878867b15fac01 21-22
+action.yml
+  s_f3796765e1b9bb::t_6a52940fa742b1 9,11
+test/action-yml.test.ts
+  s_f3796765e1b9bb::t_878867b15fac01 1-10
+pnpm-lock.yaml
+  s_f3796765e1b9bb::t_916f878c97d3a3 35-38,1037-1041,1397,1404,1780,1790,1792,1795,1806,1817-1818
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "366c953d4eaaefe61a0deafa12b7074f488ff243",
+  "prompts": {},
+  "sessions": {
+    "s_f3796765e1b9bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b84d5908-97f5-4726-90c0-1d8ac5208e58",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yan Slobodianik <12988040+yansslo@users.noreply.github.com>"
+    }
+  }
+}
