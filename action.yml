@@ -6,9 +6,9 @@ inputs:
     description: "`owner/repo` or any git URL"
     required: true
   upstream-branch:
-    description: Upstream branch (default: upstream's default branch)
+    description: "Upstream branch (default: upstream's default branch)"
   branch:
-    description: Fork branch to sync (default: the fork's default branch)
+    description: "Fork branch to sync (default: the fork's default branch)"
   token:
     description: Fine-grained PAT (Contents + Workflows write) or GitHub App token
     required: true
