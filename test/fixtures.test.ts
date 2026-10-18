@@ -119,16 +119,25 @@ async function obsoleteRepos() {
   return r;
 }
 
-/** A model that plays back fixed tool calls, one per step. */
-const scripted = (...calls: [string, object][]) =>
+/** A model that plays back fixed steps: a tool call, or a plain-text reply. */
+const scripted = (...steps: ([string, object] | string)[]) =>
   new MockLanguageModelV4({
-    doGenerate: calls.map(([toolName, input], i) => ({
-      content: [{ type: "tool-call" as const, toolCallId: `call-${i}`, toolName, input: JSON.stringify(input) }],
-      finishReason: { unified: "tool-calls" as const, raw: undefined },
+    doGenerate: steps.map((step, i) => ({
+      content: typeof step === "string"
+        ? [{ type: "text" as const, text: step }]
+        : [{ type: "tool-call" as const, toolCallId: `call-${i}`, toolName: step[0], input: JSON.stringify(step[1]) }],
+      finishReason: typeof step === "string" ? { unified: "stop" as const, raw: undefined } : { unified: "tool-calls" as const, raw: undefined },
       usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 5, text: 5, reasoning: 0 } },
       warnings: [],
     })),
   });
+
+/** The text of the prompt sent on the model's nth call (0-based). */
+const sent = (model: MockLanguageModelV4, n: number) => JSON.stringify(model.doGenerateCalls[n].prompt);
+
+const EDIT_MARKED: [string, object] = ["edit_file", { path: "greet.js", new_string: `<<<<<<< HEAD\nconst { upper } = require("./util");\n=======\nconst { upper, trim } = require("./util");\n>>>>>>> upstream\n` }];
+const EDIT_CLEAN: [string, object] = ["edit_file", { path: "greet.js", new_string: greet("upper, trim", `\nfunction wave(name) {\n  return "👋 " + trim(name);\n}\n\nfunction shout(name) {\n  return upper(greet(name)) + "!";\n}\n`, "greet, wave, shout") }];
+const FINISH: [string, object] = ["finish", { verdict: "resolved", notes: "Kept wave() and shout()." }];
 
 describe("fixtures", { timeout: 120_000 }, () => {
   it("1. clean merge pushes without calling the model", async () => {
@@ -168,6 +177,60 @@ describe("fixtures", { timeout: 120_000 }, () => {
     const o = await r.run({ model: scripted(["edit_file", { path: "util.js", new_string: UPSTREAM_UTIL }], ["finish", { verdict: "resolved", notes: "Took upstream's slugify." }]) });
     expect(o.kind).toBe("obsolete");
     expect(o.summary).toContain("keeping only upstream's version");
+    expect(await r.originHead()).toBe(before);
+  });
+
+  it("a clean resolution pushes after one round, without forcing tool calls", async () => {
+    const r = await conflictRepos();
+    const model = scripted(EDIT_CLEAN, FINISH);
+    const o = await r.run({ model });
+    expect(o.kind).toBe("adapted");
+    expect(model.doGenerateCalls).toHaveLength(2);
+    expect(model.doGenerateCalls[0].toolChoice?.type ?? "auto").toBe("auto");
+    expect((await (await r.pushed()).test()).ok).toBe(true);
+  });
+
+  it("markers left after a 'resolved' verdict start another round", async () => {
+    const r = await conflictRepos();
+    const model = scripted(EDIT_MARKED, FINISH, EDIT_CLEAN, FINISH);
+    const o = await r.run({ model });
+    expect(o.kind).toBe("adapted");
+    expect(sent(model, 2)).toContain("conflict markers are still in");
+    expect(sent(model, 2)).toContain("`greet.js`: lines 1, 3, 5");
+    expect((await (await r.pushed()).test()).ok).toBe(true);
+  });
+
+  it("a round that ends without finish starts another round", async () => {
+    const r = await conflictRepos();
+    const model = scripted("I resolved the conflict.", EDIT_CLEAN, FINISH);
+    const o = await r.run({ model });
+    expect(o.kind).toBe("adapted");
+    expect(sent(model, 1)).toContain("without calling finish");
+    expect((await (await r.pushed()).test()).ok).toBe(true);
+  });
+
+  it("the step budget stops a model that never finishes", async () => {
+    const r = await conflictRepos();
+    const before = await r.originHead();
+    const model = scripted(...Array<string>(10).fill("Done."));
+    const o = await r.run({ model, maxSteps: 3 });
+    expect(o.kind).toBe("stuck");
+    expect(model.doGenerateCalls).toHaveLength(3);
+    expect(o.summary).toContain("after 3 rounds (3/3 steps");
+    expect(o.summary).toContain("never called finish");
+    expect(await r.originHead()).toBe(before);
+  });
+
+  it("the token budget stops a model that keeps leaving markers", async () => {
+    const r = await conflictRepos();
+    const before = await r.originHead();
+    const model = scripted(...Array.from({ length: 5 }, () => [EDIT_MARKED, FINISH]).flat());
+    const o = await r.run({ model, maxTokens: 50 }); // 15 tokens per step: two rounds of two steps
+    expect(o.kind).toBe("stuck");
+    expect(model.doGenerateCalls).toHaveLength(4);
+    expect(o.summary).toContain("after 2 rounds");
+    expect(o.summary).toContain(`last finish verdict was "resolved", but conflict markers remained`);
+    expect(o.summary).toContain("`greet.js`: lines 1, 3, 5");
     expect(await r.originHead()).toBe(before);
   });
 

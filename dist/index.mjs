@@ -82060,6 +82060,7 @@ Rules:
 - Never change what a test expects just to make it pass. If the only way to pass is changing a test's expectations, finish with verdict "stuck".
 - If upstream now ships the same feature as one of the fork's custom changes (the custom version is redundant), finish with verdict "obsolete" and name the custom commit. Do not remove the custom code yourself.
 - Never delete the fork's custom code or replace it with upstream's version, even when they look equivalent. That is the "obsolete" case: finish with "obsolete" instead.
+- If both sides add the same feature, finish with "obsolete". Merging the two versions into one (for example, keeping the fork's comment or names around upstream's logic) counts as dropping the fork's code.
 - If you can't finish safely, finish with verdict "stuck" and explain what a human needs to decide.
 - If a run_test tool exists, run it before finishing with "resolved".
 - Always end by calling finish. Its notes go into the commit message: a few short plain-language lines on what you changed and why.`;
@@ -82067,9 +82068,23 @@ const isTestFile = (p) => /(^|\/)(test|tests|__tests__)\//.test(p) || /\.(test|s
 const isWorkflow = (p) => p.startsWith(".github/workflows/");
 const usageTokens = (u) => (u.inputTokens ?? 0) + (u.outputTokens ?? 0);
 const MAX_READ = 6e4;
+/** Files that still contain conflict markers, with the 1-based marker line numbers. */
+async function findMarkers(cwd, files) {
+	const out = [];
+	for (const f of files) {
+		const lines = (await readFile(path.join(cwd, f), "utf8").catch(() => "")).split("\n").flatMap((l, i) => /^(<{7}|>{7})( |$)|^={7}$/.test(l) ? [i + 1] : []);
+		if (lines.length) out.push([f, lines]);
+	}
+	return out;
+}
+const markerList = (m) => m.map(([f, lines]) => `- \`${f}\`: line${lines.length > 1 ? "s" : ""} ${lines.join(", ")}`).join("\n");
+/**
+* Runs rounds of the tool loop until the agent calls finish with an acceptable verdict or the budget runs out.
+* Tool calls aren't forced (many models reject toolChoice "required"), so a round can end with a plain-text
+* reply or a premature "resolved"; either way we tell the agent what's wrong and run another round.
+*/
 async function runAgent(cfg, s, prompt) {
-	const left = cfg.maxSteps - s.steps;
-	if (left <= 0 || s.tokens >= cfg.maxTokens) return {
+	if (s.steps >= cfg.maxSteps || s.tokens >= cfg.maxTokens) return {
 		verdict: "stuck",
 		notes: "The agent's budget was used up."
 	};
@@ -82196,34 +82211,59 @@ async function runAgent(cfg, s, prompt) {
 		})
 	};
 	const overTokens = ({ steps }) => s.tokens + steps.reduce((n, st) => n + usageTokens(st.usage), 0) >= cfg.maxTokens;
-	const agent = new ToolLoopAgent({
-		model: cfg.model,
-		instructions: INSTRUCTIONS,
-		tools,
-		toolChoice: "required",
-		stopWhen: [
-			isStepCount(left),
-			hasToolCall("finish"),
-			overTokens
-		]
-	});
 	s.messages.push({
 		role: "user",
 		content: prompt
 	});
-	let result;
-	try {
-		result = await agent.generate({ messages: s.messages });
-	} catch (e) {
-		throw new Error(`AI Gateway error: ${e.message}`);
+	let rounds = 0;
+	let last = "The agent never called finish.";
+	let lastText = "";
+	while (s.steps < cfg.maxSteps && s.tokens < cfg.maxTokens) {
+		rounds++;
+		finished = void 0;
+		const agent = new ToolLoopAgent({
+			model: cfg.model,
+			instructions: INSTRUCTIONS,
+			tools,
+			stopWhen: [
+				isStepCount(cfg.maxSteps - s.steps),
+				hasToolCall("finish"),
+				overTokens
+			]
+		});
+		let result;
+		try {
+			result = await agent.generate({ messages: s.messages });
+		} catch (e) {
+			throw new Error(`AI Gateway error: ${e.message}`);
+		}
+		s.messages.push(...result.response.messages);
+		s.steps += result.steps.length;
+		s.tokens += result.steps.reduce((n, st) => n + usageTokens(st.usage), 0);
+		lastText = result.text;
+		cfg.log(`agent: round ${rounds}, ${s.steps} steps, ${s.tokens} tokens so far`);
+		const done = finished;
+		if (!done) {
+			s.messages.push({
+				role: "user",
+				content: "You stopped without calling finish. If work remains, keep editing; then call finish with a verdict."
+			});
+			continue;
+		}
+		last = `The agent's last finish verdict was "${done.verdict}".`;
+		if (done.verdict !== "resolved") return done;
+		const markers = await findMarkers(cfg.cwd, /* @__PURE__ */ new Set([...cfg.conflicted, ...s.edited]));
+		if (!markers.length) return done;
+		last = `The agent's last finish verdict was "resolved", but conflict markers remained:\n\n${markerList(markers)}`;
+		cfg.log(`agent: finished "resolved" but markers remain in ${markers.map(([f]) => f).join(", ")}`);
+		s.messages.push({
+			role: "user",
+			content: `You called finish with "resolved", but conflict markers are still in these files:\n\n${markerList(markers)}\n\nRemove them, then call finish again.`
+		});
 	}
-	s.messages.push(...result.response.messages);
-	s.steps += result.steps.length;
-	s.tokens += result.steps.reduce((n, st) => n + usageTokens(st.usage), 0);
-	cfg.log(`agent: ${s.steps} steps, ${s.tokens} tokens so far`);
-	return finished ?? {
+	return {
 		verdict: "stuck",
-		notes: `The agent stopped without finishing (budget: ${s.steps}/${cfg.maxSteps} steps, ${s.tokens}/${cfg.maxTokens} tokens).${result.text ? `\n\nIts last message:\n\n${result.text}` : ""}`
+		notes: `The agent ran out of budget after ${rounds} round${rounds === 1 ? "" : "s"} (${s.steps}/${cfg.maxSteps} steps, ${s.tokens}/${cfg.maxTokens} tokens). ${last}${lastText ? `\n\nIts last message:\n\n${lastText}` : ""}`
 	};
 }
 //#endregion
@@ -82403,6 +82443,7 @@ async function sync(o) {
 		cwd,
 		model: o.model,
 		editable,
+		conflicted,
 		test: o.test,
 		postMerge: o.postMerge,
 		maxSteps: o.maxSteps,
@@ -82591,14 +82632,7 @@ async function keptOnlyUpstream(cwd, files) {
 	}
 	return out;
 }
-async function filesWithMarkers(cwd, files) {
-	const out = [];
-	for (const f of files) {
-		const text = await readFile(path.join(cwd, f), "utf8").catch(() => "");
-		if (/^(<{7}|>{7})( |$)|^={7}$/m.test(text)) out.push(f);
-	}
-	return out;
-}
+const filesWithMarkers = async (cwd, files) => (await findMarkers(cwd, files)).map(([f]) => f);
 async function agentContext(cwd, name, upSha, editable) {
 	const custom = await gitOk(cwd, [
 		"log",

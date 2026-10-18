@@ -1,7 +1,6 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { LanguageModel } from "ai";
-import { isTestFile, newSession, runAgent, type AgentConfig } from "./agent";
+import { findMarkers, newSession, runAgent, type AgentConfig } from "./agent";
 import { git, gitOk, runCommand } from "./exec";
 
 export type SyncOptions = {
@@ -150,7 +149,7 @@ export async function sync(o: SyncOptions): Promise<Outcome> {
   const forkChanged = paths(await gitOk(cwd, ["diff", "-z", "--name-only", base, forkSha]));
   const editable = new Set([...conflicted, ...forkChanged].filter((f) => !f.startsWith(".github/workflows/")));
   const agentCfg: AgentConfig | undefined = o.model && {
-    cwd, model: o.model, editable, test: o.test, postMerge: o.postMerge, maxSteps: o.maxSteps, maxTokens: o.maxTokens, log,
+    cwd, model: o.model, editable, conflicted, test: o.test, postMerge: o.postMerge, maxSteps: o.maxSteps, maxTokens: o.maxTokens, log,
   };
   const context = await agentContext(cwd, name, upSha, [...editable]);
 
@@ -271,14 +270,7 @@ async function keptOnlyUpstream(cwd: string, files: string[]): Promise<string[]>
   return out;
 }
 
-async function filesWithMarkers(cwd: string, files: string[]): Promise<string[]> {
-  const out: string[] = [];
-  for (const f of files) {
-    const text = await readFile(path.join(cwd, f), "utf8").catch(() => "");
-    if (/^(<{7}|>{7})( |$)|^={7}$/m.test(text)) out.push(f);
-  }
-  return out;
-}
+const filesWithMarkers = async (cwd: string, files: string[]) => (await findMarkers(cwd, files)).map(([f]) => f);
 
 async function agentContext(cwd: string, name: string, upSha: string, editable: string[]): Promise<string> {
   // During the merge HEAD is still the fork, so this is `git log --no-merges upstream..fork`.
